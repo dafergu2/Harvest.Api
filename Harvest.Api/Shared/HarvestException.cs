@@ -13,11 +13,11 @@ namespace Harvest.Api
         {
         }
 
-        public HarvestException(string message) : base(message)
+        public HarvestException(string? message) : base(message)
         {
         }
 
-        public HarvestException(string message, Exception innerException) : base(message, innerException)
+        public HarvestException(string? message, Exception innerException) : base(message, innerException)
         {
         }
     }

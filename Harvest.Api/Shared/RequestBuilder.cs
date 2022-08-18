@@ -25,9 +25,9 @@ namespace Harvest.Api
         private readonly Dictionary<string, string> _query = new Dictionary<string, string>();
         private readonly Dictionary<string, string> _form = new Dictionary<string, string>();
         private readonly Dictionary<string, string> _headers = new Dictionary<string, string>();
-        private JObject _json;
-        private HttpMethod _httpMethod;
-        private Uri _uri;
+        private JObject? _json;
+        private HttpMethod? _httpMethod;
+        private Uri? _uri;
 
         static RequestBuilder()
         {
@@ -71,7 +71,7 @@ namespace Harvest.Api
             return Begin(HttpMethod.Get, uri);
         }
 
-        public RequestBuilder Query(string name, string value)
+        public RequestBuilder Query(string name, string? value)
         {
             if (value != null)
                 this._query.Add(name, value);
@@ -104,15 +104,15 @@ namespace Harvest.Api
             return Query("updated_since", updatedSince).Query("page", page).Query("per_page", perPage);
         }
 
-        private RequestBuilder BodyInternal(string name, object value)
+        private RequestBuilder BodyInternal(string name, object? value)
         {
             if (value == null)
                 return this;
 
-            if (_json == null)
-                _form.Add(name, Convert.ToString(value));
+            if (_json == null && Convert.ToString(value) is string v)
+                _form.Add(name, v);
             else
-                _json.Add(name, JToken.FromObject(value));
+                _json?.Add(name, JToken.FromObject(value));
 
             return this;
         }
@@ -123,7 +123,7 @@ namespace Harvest.Api
             return this;
         }
 
-        public RequestBuilder Body(string name, string value)
+        public RequestBuilder Body(string name, string? value)
         {
             return BodyInternal(name, value);
         }
@@ -153,7 +153,7 @@ namespace Harvest.Api
             return BodyInternal(name, value?.ToString(truncateTime ? DateFormat : DateTimeFormat));
         }
 
-        public RequestBuilder Body(string name, ExternalReference value)
+        public RequestBuilder Body(string name, ExternalReference? value)
         {
             if (value == null)
                 return this;
@@ -177,7 +177,7 @@ namespace Harvest.Api
             return this;
         }
 
-        public RequestBuilder Body(string name, long[] value)
+        public RequestBuilder Body(string name, long[]? value)
         {
             if (value == null)
                 return this;
@@ -190,7 +190,7 @@ namespace Harvest.Api
             return this;
         }
 
-        public RequestBuilder Body(string name, LineItem[] value)
+        public RequestBuilder Body(string name, LineItem[]? value)
         {
             if (value == null)
                 return this;
@@ -222,7 +222,7 @@ namespace Harvest.Api
             return this;
         }
 
-        public RequestBuilder Body(string name, LineItemParam[] value)
+        public RequestBuilder Body(string name, LineItemParam[]? value)
         {
             if (value == null)
                 return this;
@@ -253,7 +253,7 @@ namespace Harvest.Api
             return this;
         }
 
-        public RequestBuilder Body(string name, string[] value)
+        public RequestBuilder Body(string name, string[]? value)
         {
             if (value == null)
                 return this;
@@ -276,8 +276,9 @@ namespace Harvest.Api
 
         public RequestBuilder AccountId(long? accountId)
         {
-            if (accountId != null)
-                this._headers.Add(AccountIdHeader, accountId.ToString());
+            var id = accountId.ToString();
+            if (id != null)
+                this._headers.Add(AccountIdHeader, id);
 
             return this;
         }
@@ -287,9 +288,12 @@ namespace Harvest.Api
             return Header("User-Agent", userAgent);
         }
 
-        public async Task<T> SendAsync<T>(HttpClient httpClient, CancellationToken token = default)
+        public async Task<T?> SendAsync<T>(HttpClient httpClient, CancellationToken token = default) where T : class
         {
             var stream = await SendAsyncInternal(httpClient, token, true);
+
+            if (stream is null)
+                return default;
 
             using (var reader = new JsonTextReader(new StreamReader(stream)))
                 return _serializer.Deserialize<T>(reader);
@@ -300,7 +304,7 @@ namespace Harvest.Api
             await SendAsyncInternal(httpClient, token, false);
         }
 
-        private async Task<Stream> SendAsyncInternal(HttpClient httpClient, CancellationToken token, bool readRespose)
+        private async Task<Stream?> SendAsyncInternal(HttpClient httpClient, CancellationToken token, bool readRespose)
         {
             var request = new HttpRequestMessage(_httpMethod, BuildUri(_uri, _query));
 
@@ -333,7 +337,7 @@ namespace Harvest.Api
             }
             catch (HttpRequestException)
             {
-                throw new HttpHarvestException(resp.ReasonPhrase) { StatusCode = resp.StatusCode };
+                throw new HttpHarvestException(resp?.ReasonPhrase) { StatusCode = resp?.StatusCode };
             }
 
             if (readRespose)
